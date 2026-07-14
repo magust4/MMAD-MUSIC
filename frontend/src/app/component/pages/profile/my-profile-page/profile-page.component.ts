@@ -1,11 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Subscription } from 'rxjs';
 
 import { ProfileViewerComponent } from '../profile-viewer/profile-viewer.component';
 
 import { ReviewService } from '../../../../service/review/review.service';
 import { UserService, UserDTO } from '../../../../service/user/user.service';
 import { AuthService } from '../../../../service/user/auth/auth.service';
+import { ReviewStateService } from '../../../../service/review/review-state/review-state.service.spec';
 
 import { Review } from '../../../../core/model/review/review.type';
 
@@ -13,7 +15,6 @@ import { MatDialog } from '@angular/material/dialog';
 import { UserListDialogComponent } from '../../../user-list-dialog/user-list-dialog.component';
 
 import { Router } from '@angular/router';
-
 
 @Component({
   selector: 'app-profile-page',
@@ -24,74 +25,90 @@ import { Router } from '@angular/router';
   ],
   templateUrl: './profile-page.component.html'
 })
-export class ProfilePageComponent implements OnInit {
-
+export class ProfilePageComponent implements OnInit, OnDestroy {
 
   currentUser: UserDTO | null = null;
 
   reviews: Review[] = [];
 
-
   isLoading = true;
 
   isReviewsLoading = true;
-
 
   errorMessage = '';
 
   cardComponent = 'ReviewCardComponent';
 
+  private reviewSub?: Subscription;
 
 
   constructor(
     private userService: UserService,
     private reviewService: ReviewService,
+    private reviewStateService: ReviewStateService,
     private authService: AuthService,
     private router: Router,
     private dialog: MatDialog
   ) { }
 
 
-
   ngOnInit(): void {
-
 
     this.loadProfile();
 
 
+    this.reviewSub =
+      this.reviewStateService.reviewCreated$
+        .subscribe(review => {
+
+          if (
+            review &&
+            this.currentUser?.username === review.username
+          ) {
+
+            this.reviews = [
+              review,
+              ...this.reviews
+            ];
+
+          }
+
+        });
+
   }
 
 
+  ngOnDestroy(): void {
 
-  loadProfile() {
+    this.reviewSub?.unsubscribe();
+
+  }
+
+
+  loadProfile(): void {
 
     this.isLoading = true;
-
 
     this.userService.getMyProfile()
       .subscribe({
 
         next: (user) => {
 
-
           this.currentUser = user;
 
           this.isLoading = false;
-
 
           if (user.username) {
 
             this.loadReviews(user.username);
 
-          }
-          else {
+          } else {
 
             this.isReviewsLoading = false;
 
           }
 
         },
-
 
         error: () => {
 
@@ -105,17 +122,12 @@ export class ProfilePageComponent implements OnInit {
 
       });
 
-
   }
 
 
-
-
-  loadReviews(username: string) {
-
+  loadReviews(username: string): void {
 
     this.isReviewsLoading = true;
-
 
     this.reviewService.getUserReviews(username)
       .subscribe({
@@ -127,7 +139,6 @@ export class ProfilePageComponent implements OnInit {
           this.isReviewsLoading = false;
 
         },
-
 
         error: () => {
 
@@ -141,13 +152,21 @@ export class ProfilePageComponent implements OnInit {
 
       });
 
+  }
+
+
+  refreshReviews(): void {
+
+    if (!this.currentUser?.username) {
+      return;
+    }
+
+    this.loadReviews(this.currentUser.username);
 
   }
 
 
-
-
-  logout() {
+  logout(): void {
 
     this.authService.logout();
 
@@ -156,12 +175,10 @@ export class ProfilePageComponent implements OnInit {
   }
 
 
-
   openUserList(data: {
     title: string,
     users: string[]
-  }) {
-
+  }): void {
 
     this.dialog.open(UserListDialogComponent, {
 
@@ -171,8 +188,6 @@ export class ProfilePageComponent implements OnInit {
 
     });
 
-
   }
-
 
 }

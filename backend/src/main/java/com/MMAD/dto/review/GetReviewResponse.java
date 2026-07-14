@@ -17,6 +17,9 @@ public class GetReviewResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    private long likeCount;
+    private boolean likedByCurrentUser;
+
     public GetReviewResponse(
             Long id,
             int rating,
@@ -24,7 +27,9 @@ public class GetReviewResponse {
             ItemDTO item,
             String username,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt) {
+            LocalDateTime updatedAt,
+            long likeCount,
+            boolean likedByCurrentUser) {
 
         this.id = id;
         this.rating = rating;
@@ -33,6 +38,8 @@ public class GetReviewResponse {
         this.username = username;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.likeCount = likeCount;
+        this.likedByCurrentUser = likedByCurrentUser;
     }
 
     public Long getId() {
@@ -91,7 +98,26 @@ public class GetReviewResponse {
         this.updatedAt = updatedAt;
     }
 
-    public static GetReviewResponse fromEntity(Review review) {
+    public long getLikeCount() {
+        return likeCount;
+    }
+
+    public void setLikeCount(long likeCount) {
+        this.likeCount = likeCount;
+    }
+
+    public boolean isLikedByCurrentUser() {
+        return likedByCurrentUser;
+    }
+
+    public void setLikedByCurrentUser(boolean likedByCurrentUser) {
+        this.likedByCurrentUser = likedByCurrentUser;
+    }
+
+    public static GetReviewResponse fromEntity(
+            Review review,
+            long likeCount,
+            boolean likedByCurrentUser) {
 
         if (review == null) {
             return null;
@@ -104,7 +130,8 @@ public class GetReviewResponse {
                 ItemDTO.fromEntity(review.getItem()),
                 review.getUser().getUsername(),
                 review.getCreatedAt(),
-                review.getUpdatedAt()
-        );
+                review.getUpdatedAt(),
+                likeCount,
+                likedByCurrentUser);
     }
 }

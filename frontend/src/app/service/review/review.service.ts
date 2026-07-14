@@ -89,4 +89,20 @@ export class ReviewService {
     );
   }
 
+  likeReview(reviewId: number): Observable<void> {
+
+    return this.http.post<void>(
+      `${this.apiUrl}/${reviewId}/like`,
+      {}
+    );
+  }
+
+
+  unlikeReview(id: number): Observable<void> {
+
+    return this.http.delete<void>(
+      `${this.apiUrl}/${id}/like`
+    );
+  }
+
 }

@@ -69,7 +69,16 @@
   color: var(--text-secondary);
 }
 
+.review-meta {
+  flex-direction: column;
+}
+
 .review-date {
   margin-top: 8px;
   align-self: flex-start;
 }
+
+.review-like {
+  margin-top: auto;
+}
+

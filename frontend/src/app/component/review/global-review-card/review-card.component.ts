@@ -1,4 +1,11 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  Input,
+  OnChanges
+} from '@angular/core';
+
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TimeAgoPipe } from '../../../core/pipe/time-ago.pipe';
@@ -9,17 +16,43 @@ import { Album } from '../../../core/model/item/album.type';
 import { Song } from '../../../core/model/item/song.type';
 import { Item } from '../../../core/model/item/item.type';
 
+import { ReviewService } from '../../../service/review/review.service';
+
 @Component({
   selector: 'app-review-card',
   standalone: true,
-  imports: [CommonModule, RouterModule, TimeAgoPipe],
+  imports: [
+    CommonModule,
+    RouterModule,
+    TimeAgoPipe
+  ],
   templateUrl: './review-card.component.html',
   styleUrl: './review-card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ReviewCardComponent{
+export class ReviewCardComponent implements OnChanges {
 
   @Input() review!: Review;
+
+
+  constructor(
+    private reviewService: ReviewService,
+    private cdr: ChangeDetectorRef
+  ) { }
+
+
+  ngOnChanges() {
+
+    console.log(
+      "Review state:",
+      this.review.id,
+      this.review.likedByCurrentUser,
+      this.review.likeCount
+    );
+
+  }
+
+
 
   // -------------------------
   // TYPE GUARDS
@@ -92,6 +125,7 @@ export class ReviewCardComponent{
     return this.item && this.isArtist(this.item)
       ? this.item
       : null;
+
   }
 
 
@@ -105,43 +139,87 @@ export class ReviewCardComponent{
   // UPDATED CHECK
   // -------------------------
 
-  // -------------------------
-  // UPDATED CHECK
-  // -------------------------
-
   get wasUpdated(): boolean {
 
     if (!this.review?.createdAt || !this.review?.updatedAt) {
       return false;
     }
 
-    const created = new Date(this.review.createdAt).getTime();
+    const created =
+      new Date(this.review.createdAt).getTime();
 
-    const updated = new Date(this.review.updatedAt).getTime();
+    const updated =
+      new Date(this.review.updatedAt).getTime();
 
     return Math.abs(updated - created) > 1000;
-
   }
 
 
-  get displayDate(): string {
 
-    if (this.wasUpdated) {
-      return 'Updated';
+  // -------------------------
+  // LIKE
+  // -------------------------
+
+  toggleLike(): void {
+
+    console.log(
+      "BEFORE CLICK:",
+      this.review.likedByCurrentUser,
+      this.review.likeCount
+    );
+
+
+    if (this.review.likedByCurrentUser) {
+
+      this.reviewService
+        .unlikeReview(this.review.id)
+        .subscribe(() => {
+
+          this.review = {
+            ...this.review,
+            likedByCurrentUser: false,
+            likeCount: Math.max(
+              0,
+              this.review.likeCount - 1
+            )
+          };
+
+          console.log(
+            "AFTER UNLIKE:",
+            this.review.likedByCurrentUser,
+            this.review.likeCount
+          );
+
+          this.cdr.markForCheck();
+
+        });
+
+
+    } else {
+
+      this.reviewService
+        .likeReview(this.review.id)
+        .subscribe(() => {
+
+          this.review = {
+            ...this.review,
+            likedByCurrentUser: true,
+            likeCount: this.review.likeCount + 1
+          };
+
+
+          console.log(
+            "AFTER LIKE:",
+            this.review.likedByCurrentUser,
+            this.review.likeCount
+          );
+
+
+          this.cdr.markForCheck();
+
+        });
+
     }
-
-    return '';
-
-  }
-
-
-  get displayTime(): string {
-
-    if (this.wasUpdated) {
-      return this.review.updatedAt;
-    }
-
-    return this.review.createdAt;
 
   }
 

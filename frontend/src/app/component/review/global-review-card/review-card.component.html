@@ -10,15 +10,13 @@
 
     <div class="review-body">
 
-      <div class="body-top">
-
+      <div class="item-info">
         <!-- ITEM NAME -->
         <h1 class="item-name clickable" [routerLink]="['/item', currentItem.id]">
           {{ currentItem.name }}
         </h1>
 
         <!-- ITEM TYPE + ARTISTS -->
-        <div class="item-info">
           <span class="item-type">
             {{ itemType | titlecase }}
           </span>
@@ -33,41 +31,63 @@
               <span *ngIf="!last">, </span>
             </ng-container>
           </span>
-        </div>
 
+      </div>
+
+      <div class="review-info">
         <!-- USER -->
         <h2 class="username clickable" [routerLink]="['/profile', review.username]">
           {{ review.username }}
         </h2>
 
-      </div>
+        <!-- STARS -->
+        <div class="stars">
+          <span *ngFor="let _ of stars">⭐</span>
+        </div>
 
-      <!-- STARS -->
-      <div class="stars">
-        <span *ngFor="let _ of stars">⭐</span>
-      </div>
-
-      <!-- REVIEW TEXT -->
-      <div class="body-middle">
-        <div class="description">
-          {{ review.description }}
+        <!-- REVIEW TEXT -->
+        <div class="body-middle">
+          <div class="description">
+            {{ review.description }}
+          </div>
         </div>
       </div>
 
     </div>
 
-    <!-- DATE -->
-    <div class="review-date">
+    <div class="review-meta">
 
-      <span *ngIf="wasUpdated">
-        Updated {{ review.updatedAt | timeAgo }}
-      </span>
+      <!-- DATE -->
+      <div class="review-date">
 
-      <span *ngIf="!wasUpdated">
-        {{ review.createdAt | timeAgo }}
-      </span>
+        <span *ngIf="wasUpdated">
+          Updated {{ review.updatedAt | timeAgo }}
+        </span>
 
+        <span *ngIf="!wasUpdated">
+          {{ review.createdAt | timeAgo }}
+        </span>
+
+      </div>
+      <!-- LIKE -->
+      <div class="review-like">
+
+        <button class="like-button" (click)="toggleLike()" [class.liked]="review.likedByCurrentUser">
+
+          <span class="heart">
+            {{ review.likedByCurrentUser ? '♥' : '♡' }}
+          </span>
+
+          <span class="count">
+            {{ review.likeCount }}
+          </span>
+
+        </button>
+
+      </div>
     </div>
   </div>
+
+
 
 </div>

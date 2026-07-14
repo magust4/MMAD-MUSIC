@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 import { ReviewViewerComponent } from '../../review/review-viewer/review-viewer.component';
 import { ItemCardComponent } from '../../item/item.component';
@@ -10,6 +11,7 @@ import { ItemPageSkeletonComponent } from './item-page-skeleton/item-page-skelet
 import { ItemReviewViewModel } from '../../../core/model/review/ItemReviewsResponse';
 import { PageService } from '../../../service/page/page.service';
 import { UiService } from '../../../service/ui/ui.service';
+import { ReviewStateService } from '../../../service/review/review-state/review-state.service.spec';
 
 import { Item } from '../../../core/model/item/item.type';
 import { Album } from '../../../core/model/item/album.type';
@@ -31,7 +33,7 @@ import { SimplifiedSong } from '../../../core/model/page/item-page.type';
   templateUrl: './item-page.component.html',
   styleUrls: ['./item-page.component.css']
 })
-export class ItemPageComponent implements OnInit {
+export class ItemPageComponent implements OnInit, OnDestroy {
 
   item: Item | null = null;
 
@@ -52,12 +54,15 @@ export class ItemPageComponent implements OnInit {
   isLoading = true;
   errorMessage = '';
 
+  private reviewSub?: Subscription;
+
 
   constructor(
     private route: ActivatedRoute,
     private pageService: PageService,
     private ui: UiService,
-    private router: Router
+    private router: Router,
+    private reviewStateService: ReviewStateService
   ) { }
 
 
@@ -76,6 +81,35 @@ export class ItemPageComponent implements OnInit {
       this.loadPage(id);
 
     });
+
+
+    this.reviewSub =
+      this.reviewStateService.reviewCreated$
+        .subscribe(review => {
+
+          if (
+            review &&
+            this.itemId &&
+            review.item.id === this.itemId
+          ) {
+
+            this.reviews = [
+              review,
+              ...this.reviews
+            ];
+
+            this.reviewCount++;
+
+          }
+
+        });
+
+  }
+
+
+  ngOnDestroy(): void {
+
+    this.reviewSub?.unsubscribe();
 
   }
 

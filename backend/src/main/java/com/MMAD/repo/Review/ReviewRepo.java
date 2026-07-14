@@ -1,4 +1,4 @@
-package com.MMAD.repo;
+package com.MMAD.repo.Review;
 
 import java.util.List;
 import java.util.Optional;

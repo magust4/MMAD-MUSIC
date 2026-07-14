@@ -1,9 +1,13 @@
 package com.MMAD.Service.user;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Arrays;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,6 +37,29 @@ public class UserService {
         private final JWTService jwtService;
         private final UserDTOMapper userDTOMapper;
         private final EmailService emailService;
+
+        private static final Set<String> RESERVED_USERNAMES = new HashSet<>(
+                        Arrays.asList(
+                                        "admin",
+                                        "administrator",
+                                        "support",
+                                        "help",
+                                        "system",
+                                        "root",
+                                        "mmad",
+                                        "mmadmusic",
+                                        "mmad_music",
+                                        "official",
+                                        "moderator",
+                                        "moderator",
+                                        "api",
+                                        "staff",
+                                        "security",
+                                        "contact",
+                                        "billing",
+                                        "music",
+                                        "artist",
+                                        "artists"));
 
         public UserService(
                         UserRepo userRepo,
@@ -119,14 +146,21 @@ public class UserService {
                         String username,
                         String email,
                         String password) {
-                Optional<User> existingUsername = userRepo.findUserByUsername(username);
+
+                username = username.trim();
+                email = email.trim().toLowerCase();
+
+                validateUsername(username);
+
+                Optional<User> existingUsername = userRepo.findUserByUsernameIgnoreCase(username);
 
                 if (existingUsername.isPresent()) {
                         throw new RuntimeException(
                                         "Username already exists");
                 }
 
-                Optional<User> existingEmail = userRepo.findUserByEmail(email);
+                Optional<User> existingEmail = userRepo.findUserByEmailIgnoreCase(email);
+
                 if (existingEmail.isPresent()) {
                         throw new RuntimeException(
                                         "Email already exists");
@@ -140,6 +174,7 @@ public class UserService {
                                 email);
 
                 newUser.setVerified(false);
+
                 String code = generateVerificationCode();
 
                 newUser.setVerificationCode(code);
@@ -151,6 +186,7 @@ public class UserService {
 
                 newUser.setVerificationCodeSentAt(
                                 now);
+
                 userRepo.save(newUser);
 
                 try {
@@ -298,7 +334,7 @@ public class UserService {
                         return List.of();
                 }
 
-                return userRepo.findByUsernameContainingIgnoreCase(query)
+                return userRepo.findUserByUsernameIgnoreCase(query)
                                 .stream()
                                 .map(userDTOMapper::apply)
                                 .collect(Collectors.toList());
@@ -474,4 +510,45 @@ public class UserService {
                 }
 
         }
+
+        private void validateUsername(String username) {
+                if (RESERVED_USERNAMES.contains(username.toLowerCase())) {
+                        throw new RuntimeException(
+                                        "This username is reserved.");
+                }
+
+                if (username == null || username.isBlank()) {
+                        throw new RuntimeException("Username cannot be empty.");
+                }
+
+                if (username.length() < 3 || username.length() > 20) {
+                        throw new RuntimeException(
+                                        "Username must be between 3 and 20 characters.");
+                }
+
+                if (username.contains("@")) {
+                        throw new RuntimeException(
+                                        "Username cannot contain '@'.");
+                }
+
+                if (!username.matches("^[A-Za-z0-9._]+$")) {
+                        throw new RuntimeException(
+                                        "Username may only contain letters, numbers, periods, and underscores.");
+                }
+
+                if (username.startsWith(".")
+                                || username.endsWith(".")
+                                || username.startsWith("_")
+                                || username.endsWith("_")) {
+
+                        throw new RuntimeException(
+                                        "Username cannot start or end with '.' or '_'.");
+                }
+
+                if (username.contains("..") || username.contains("__")) {
+                        throw new RuntimeException(
+                                        "Username cannot contain consecutive '.' or '_'.");
+                }
+        }
+
 }

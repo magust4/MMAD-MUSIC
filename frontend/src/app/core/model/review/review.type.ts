@@ -8,4 +8,7 @@ export interface Review {
   username: string;
   createdAt: string;
   updatedAt: string;
+
+  likeCount: number;
+  likedByCurrentUser: boolean;
 }

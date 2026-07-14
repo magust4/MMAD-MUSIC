@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -11,7 +11,7 @@ import { ReviewService } from '../../../service/review/review.service';
 import { AuthService } from '../../../service/user/auth/auth.service';
 import { UiService } from '../../../service/ui/ui.service';
 import { ItemPreviewComponent } from '../../item/item-preview/item-preview.component';
-
+import { ReviewStateService } from '../../../service/review/review-state/review-state.service.spec';
 @Component({
   selector: 'app-review-builder',
   standalone: true,
@@ -47,11 +47,14 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
   private sub?: Subscription;
 
 
+
   constructor(
     private reviewService: ReviewService,
     private authService: AuthService,
-    private ui: UiService
+    private ui: UiService,
+    private reviewStateService: ReviewStateService
   ) { }
+
 
 
   ngOnInit(): void {
@@ -59,6 +62,7 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
     this.sub = this.ui.reviewOpen$.subscribe(open => {
 
       this.isOpen = open;
+
 
       if (open) {
 
@@ -73,11 +77,16 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
         this.pendingReview = null;
 
 
-        this.selectedItem = this.ui.selectedItem ?? null;
+        this.selectedItem =
+          this.ui.selectedItem ?? null;
 
 
         if (this.selectedItem) {
-          this.checkExistingReview(this.selectedItem);
+
+          this.checkExistingReview(
+            this.selectedItem
+          );
+
         }
 
       }
@@ -87,11 +96,13 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
   }
 
 
+
   ngOnDestroy(): void {
 
     this.sub?.unsubscribe();
 
   }
+
 
 
   close(): void {
@@ -101,6 +112,7 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
     this.reset();
 
   }
+
 
 
   reset(): void {
@@ -124,6 +136,7 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
   }
 
 
+
   selectItem(item: Item): void {
 
     this.selectedItem = item;
@@ -131,6 +144,7 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
     this.checkExistingReview(item);
 
   }
+
 
 
   changeItem(): void {
@@ -152,16 +166,25 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
   }
 
 
+
   checkExistingReview(item: Item): void {
 
-    const username = this.authService.getUsername();
+    const username =
+      this.authService.getUsername();
+
 
     if (!username || !item.id) {
+
       return;
+
     }
 
+
     this.reviewService
-      .getReviewByUserAndItem(username, item.id)
+      .getReviewByUserAndItem(
+        username,
+        item.id
+      )
       .subscribe({
 
         next: (review) => {
@@ -171,6 +194,7 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
           this.showUpdatePrompt = true;
 
         },
+
 
         error: (err) => {
 
@@ -184,6 +208,7 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
 
           }
 
+
           console.error(
             'Failed checking existing review',
             err
@@ -196,23 +221,34 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
   }
 
 
+
   acceptUpdate(): void {
 
     if (!this.pendingReview) {
+
       return;
+
     }
 
-    this.existingReviewId = this.pendingReview.id;
 
-    this.rating = this.pendingReview.rating;
+    this.existingReviewId =
+      this.pendingReview.id;
 
-    this.text = this.pendingReview.description;
+
+    this.rating =
+      this.pendingReview.rating;
+
+
+    this.text =
+      this.pendingReview.description;
+
 
     this.isEditing = true;
 
     this.showUpdatePrompt = false;
 
   }
+
 
 
   cancelUpdate(): void {
@@ -226,6 +262,7 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
   }
 
 
+
   setRating(star: number): void {
 
     this.rating = star;
@@ -233,13 +270,20 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
   }
 
 
+
   submit(): void {
 
+
     if (!this.selectedItem) {
+
       return;
+
     }
 
-    const username = this.authService.getUsername();
+
+    const username =
+      this.authService.getUsername();
+
 
     if (!username) {
 
@@ -249,6 +293,7 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
       return;
 
     }
+
 
 
     const payload = {
@@ -262,7 +307,9 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
     };
 
 
-    const request$ = this.isEditing && this.existingReviewId
+
+    const request$ = this.isEditing &&
+      this.existingReviewId
 
       ? this.reviewService.updateReview(
         this.existingReviewId,
@@ -272,31 +319,48 @@ export class ReviewBuilderComponent implements OnInit, OnDestroy {
         }
       )
 
-      : this.reviewService.createReview(payload);
+      : this.reviewService.createReview(
+        payload
+      );
+
 
 
     request$.subscribe({
 
-      next: () => {
+      next: (review: Review) => {
+
+
+        if (!this.isEditing) {
+
+          this.reviewStateService.addReview(review);
+
+        }
+
 
         this.close();
 
       },
 
+
       error: (err) => {
+
 
         console.error(
           'Failed to save review:',
           err
         );
 
+
         this.errorMessage =
           'Failed to save review';
+
 
       }
 
     });
 
+
   }
+
 
 }

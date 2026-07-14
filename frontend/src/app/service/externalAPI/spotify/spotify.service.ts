@@ -12,7 +12,7 @@ import { environment } from '../../../../environments/environment';
   providedIn: 'root'
 })
 export class SpotifyService extends ExternalAPIService {
-  protected override apiUrl = `${environment.apiUrl}spotify`;
+  protected override apiUrl = `${environment.apiUrl}/spotify`;
 
   constructor(protected override http: HttpClient) {
     super(http);

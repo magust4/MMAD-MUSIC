@@ -17,7 +17,8 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(List.of(
-                "https://mmad-music-front.onrender.com"
+                "https://mmad-music-front.onrender.com",
+                "http://localhost:4200"
         ));
 
         config.setAllowedMethods(List.of(

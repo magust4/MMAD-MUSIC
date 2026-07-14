@@ -1,38 +1,44 @@
 package com.MMAD.Controller;
 
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.Valid; // For validating @RequestBody
+import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.MMAD.Service.ReviewService;
+import com.MMAD.Service.Review.ReviewService;
+import com.MMAD.Service.Review.ReviewLikeService;
+import com.MMAD.Service.user.UserService;
 import com.MMAD.dto.review.GetReviewResponse;
 import com.MMAD.dto.review.ItemReviewsResponse;
 import com.MMAD.dto.review.PostReviewRequest;
 import com.MMAD.dto.review.UpdateReviewRequest;
+import com.MMAD.entity.User.User;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/reviews") // Changed to plural '/reviews' for RESTful convention
+@RequestMapping("/reviews")
 public class ReviewController {
 
     private final ReviewService reviewService;
+    private final ReviewLikeService reviewLikeService;
+    private final UserService userService;
 
-    // Constructor Injection (uncommented)
-    public ReviewController(ReviewService reviewService) {
+    public ReviewController(
+            ReviewService reviewService,
+            ReviewLikeService reviewLikeService,
+            UserService userService) {
+
         this.reviewService = reviewService;
-
+        this.reviewLikeService = reviewLikeService;
+        this.userService = userService;
     }
 
     // CREATE
-    /**
-     * Endpoint to create a new review.
-     * Requires userId, itemId, rating, and description in the request body.
-     */
     @PostMapping("/add")
     public ResponseEntity<?> createReview(
             @Valid @RequestBody PostReviewRequest reviewRequest) {
@@ -49,61 +55,115 @@ public class ReviewController {
                     .body(savedReview);
 
         } catch (EntityNotFoundException e) {
+
             return ResponseEntity.notFound().build();
 
         } catch (ResponseStatusException e) {
+
             return ResponseEntity
                     .status(e.getStatusCode())
                     .body(e.getReason());
 
         } catch (IllegalArgumentException e) {
+
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
                     .body(e.getMessage());
 
         } catch (Exception e) {
+
             e.printStackTrace();
+
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(e.getMessage());
         }
     }
 
-    // READ
+    @PostMapping("/{reviewId}/like")
+    public ResponseEntity<?> likeReview(
+            @PathVariable Long reviewId) {
+
+        System.out.println("LIKE REQUEST RECEIVED: " + reviewId);
+
+        User user = userService.getCurrentUserEntity();
+
+        System.out.println("USER: " + user.getId());
+
+        reviewLikeService.likeReview(
+                user.getId(),
+                reviewId);
+
+        return ResponseEntity.ok().build();
+    }
+
+    // UNLIKE REVIEW
+    @DeleteMapping("/{reviewId}/like")
+    public ResponseEntity<?> unlikeReview(
+            @PathVariable Long reviewId) {
+
+        User user = userService.getCurrentUserEntity();
+
+        reviewLikeService.unlikeReview(
+                user.getId(),
+                reviewId);
+
+        return ResponseEntity.ok().build();
+    }
+
+    // READ ALL REVIEWS
     @GetMapping("/all")
     public ResponseEntity<List<GetReviewResponse>> getAllReviews() {
+
         try {
+
             List<GetReviewResponse> reviews = reviewService.getAllReviews();
-            return new ResponseEntity<>(reviews, HttpStatus.OK);
+
+            return ResponseEntity.ok(reviews);
+
         } catch (Exception e) {
+
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(null); // Or include a message body if needed
+                    .body(null);
         }
     }
 
-    @GetMapping("find/{id}") // GET to /reviews/{id}
-    public ResponseEntity<GetReviewResponse> getReviewById(@PathVariable("id") Long id) {
+    @GetMapping("find/{id}")
+    public ResponseEntity<GetReviewResponse> getReviewById(
+            @PathVariable("id") Long id) {
+
         try {
+
             GetReviewResponse review = reviewService.getReviewById(id);
-            return new ResponseEntity<>(review, HttpStatus.OK);
+
+            return ResponseEntity.ok(review);
+
         } catch (EntityNotFoundException e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND); // 404
+
+            return ResponseEntity.notFound().build();
         }
     }
 
-    /**
-     * Endpoint to get all reviews by a specific user.
-     */
     @GetMapping("/user/{username}")
-    public ResponseEntity<List<GetReviewResponse>> getReviewsByUserId(@PathVariable("username") String username) {
+    public ResponseEntity<List<GetReviewResponse>> getReviewsByUserId(
+            @PathVariable String username) {
+
         try {
+
             List<GetReviewResponse> reviews = reviewService.getReviewsByUsername(username);
-            return ResponseEntity.ok(reviews); // 200 OK
+
+            return ResponseEntity.ok(reviews);
+
         } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // 404
+
+            return ResponseEntity.notFound().build();
+
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null); // 500
+
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
         }
     }
 
@@ -117,42 +177,49 @@ public class ReviewController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * Endpoint to get all reviews for a specific item.
-     */
     @GetMapping("/item/{itemId}")
     public ResponseEntity<ItemReviewsResponse> getReviewsByItemId(
-            @PathVariable("itemId") Long itemId) {
+            @PathVariable Long itemId) {
 
         try {
+
             ItemReviewsResponse response = reviewService.getReviewsByItemId(itemId);
+
             return ResponseEntity.ok(response);
 
         } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+
+            return ResponseEntity.notFound().build();
 
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
         }
     }
 
-    @PutMapping("/{id}") // PUT to /reviews/{id}
+    @PutMapping("/{id}")
     public ResponseEntity<GetReviewResponse> updateReview(
-            @PathVariable("id") Long id,
-            @Valid @RequestBody UpdateReviewRequest updateRequest) { // <-- CHANGED METHOD SIGNATURE
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateReviewRequest updateRequest) {
+
         try {
+
             GetReviewResponse updatedReview = reviewService.updateReview(
                     id,
                     updateRequest.getRating(),
                     updateRequest.getDescription());
-            return new ResponseEntity<>(updatedReview, HttpStatus.OK);
+
+            return ResponseEntity.ok(updatedReview);
+
         } catch (EntityNotFoundException e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND); // 404
+
+            return ResponseEntity.notFound().build();
+
         } catch (Exception e) {
-            // It's good practice to log the actual exception for debugging
-            System.err.println("Error updating review: " + e.getMessage());
-            e.printStackTrace(); // For full stack trace in console
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // 400 for other issues (e.g., validation)
+
+            return ResponseEntity.badRequest().build();
         }
     }
 
@@ -169,24 +236,25 @@ public class ReviewController {
         return ResponseEntity.ok(reviews);
     }
 
-    /**
-     * Endpoint to delete a review by its ID.
-     */
-    @DeleteMapping("/{id}") // DELETE to /reviews/{id}
-    public ResponseEntity<?> deleteReview(@PathVariable("id") Long id) {
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteReview(
+            @PathVariable Long id) {
+
         try {
+
             reviewService.deleteReview(id);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT); // 204
+
+            return ResponseEntity.noContent().build();
+
         } catch (EntityNotFoundException e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND); // 404
+
+            return ResponseEntity.notFound().build();
         }
     }
 
-    /**
-     * Simple test endpoint to check if the API is responsive.
-     */
-    @GetMapping("/test") // GET to /reviews/test
+    @GetMapping("/test")
     public String test() {
+
         return "Review API is working";
     }
 }

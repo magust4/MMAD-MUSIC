@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Subscription } from 'rxjs';
 
+import { ReviewStateService } from '../../../service/review/review-state/review-state.service.spec';
 import { ReviewViewerComponent } from '../../review/review-viewer/review-viewer.component';
 import { ReviewService } from '../../../service/review/review.service';
 import { Review } from '../../../core/model/review/review.type';
@@ -25,12 +27,40 @@ export class HomePageComponent implements OnInit {
 
   errorMessage = '';
 
+  private reviewSub?: Subscription;
+
   constructor(
-    private reviewService: ReviewService
+    private reviewService: ReviewService,
+    private reviewStateService: ReviewStateService
   ) { }
 
+
   ngOnInit(): void {
+
     this.loadReviews();
+
+
+    this.reviewSub =
+      this.reviewStateService.reviewCreated$
+        .subscribe(review => {
+
+          if (review) {
+
+            this.reviews = [
+              review,
+              ...this.reviews
+            ];
+
+          }
+
+        });
+
+  }
+
+  ngOnDestroy(): void {
+
+    this.reviewSub?.unsubscribe();
+
   }
 
 
@@ -40,32 +70,39 @@ export class HomePageComponent implements OnInit {
 
     this.errorMessage = '';
 
-    setTimeout(() => {
+    this.reviewService.getFeedReviews()
+      .subscribe({
 
-      this.reviewService.getFeedReviews()
-        .subscribe({
+        next: (reviews: Review[]) => {
 
-          next: (reviews: Review[]) => {
+          this.reviews = reviews ?? [];
 
-            this.reviews = reviews ?? [];
+          this.isLoading = false;
 
-            this.isLoading = false;
+        },
 
-          },
+        error: () => {
 
-          error: () => {
+          this.errorMessage = 'Failed to load reviews';
 
-            this.errorMessage = 'Failed to load reviews';
+          this.reviews = [];
 
-            this.reviews = [];
+          this.isLoading = false;
 
-            this.isLoading = false;
+        }
 
-          }
+      });
 
-        });
+  }
 
-    }, 100);
+
+  // NEW
+  addReview(review: Review): void {
+
+    this.reviews = [
+      review,
+      ...this.reviews
+    ];
 
   }
 
