@@ -48,4 +48,6 @@ public interface ReviewRepo extends JpaRepository<Review, Long> {
                 ORDER BY COALESCE(r.updatedAt, r.createdAt) DESC
             """)
     List<Review> findFeedReviews(@Param("userId") Long userId);
+
+    List<Review> findTop10ByOrderByCreatedAtDesc();
 }

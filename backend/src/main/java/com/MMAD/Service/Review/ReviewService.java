@@ -169,23 +169,24 @@ public class ReviewService {
         }
 
         @Transactional(readOnly = true)
-        public List<GetReviewResponse> getFeedReviews(
-                        String username) {
+        public List<GetReviewResponse> getFeedReviews(String username) {
 
                 User user = userService.getUserByUsername(username)
-                                .orElseThrow(() -> new EntityNotFoundException(
-                                                "User not found"));
+                                .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
-                List<Review> reviews = reviewRepo.findFeedReviews(
-                                user.getId());
+                List<Review> reviews;
+
+                if (user.getFollowing().isEmpty()) {
+                        reviews = reviewRepo.findTop10ByOrderByCreatedAtDesc();
+                } else {
+                        reviews = reviewRepo.findFeedReviews(user.getId());
+                }
 
                 return reviews.stream()
                                 .map(review -> GetReviewResponse.fromEntity(
                                                 review,
-                                                reviewLikeService.getLikeCount(
-                                                                review.getId()),
-                                                isLikedByCurrentUser(
-                                                                review.getId())))
+                                                reviewLikeService.getLikeCount(review.getId()),
+                                                isLikedByCurrentUser(review.getId())))
                                 .toList();
         }
 

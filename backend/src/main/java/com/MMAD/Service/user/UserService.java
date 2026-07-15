@@ -173,7 +173,9 @@ public class UserService {
                                 passwordEncoder.encode(password),
                                 email);
 
-                newUser.setVerified(false);
+                //newUser.setVerified(false);
+//Email verification
+                newUser.setVerified(true);
 
                 String code = generateVerificationCode();
 
@@ -188,21 +190,24 @@ public class UserService {
                                 now);
 
                 userRepo.save(newUser);
+                
+                
+//turn back on for email verification
 
-                try {
+                // try {
 
-                        emailService.sendVerificationEmail(
-                                        email,
-                                        code);
+                //         emailService.sendVerificationEmail(
+                //                         email,
+                //                         code);
 
-                } catch (Exception e) {
+                // } catch (Exception e) {
 
-                        e.printStackTrace();
+                //         e.printStackTrace();
 
-                        throw new RuntimeException(
-                                        "Verification email failed: " + e.getMessage());
+                //         throw new RuntimeException(
+                //                         "Verification email failed: " + e.getMessage());
 
-                }
+                // }
         }
 
         public void verifyUser(
@@ -385,9 +390,10 @@ public class UserService {
 
                 userRepo.save(user);
 
-                emailService.sendPasswordResetEmail(
-                                email,
-                                code);
+//EMAIL VERIFICATION
+                // emailService.sendPasswordResetEmail(
+                //                 email,
+                //                 code);
 
         }
 
