@@ -207,8 +207,6 @@ Current development priorities:
 
 Planned improvements:
 
-* Email verification
-* Password reset improvements
 * More detailed user statistics
 * Better recommendation system
 * Production deployment configuration
