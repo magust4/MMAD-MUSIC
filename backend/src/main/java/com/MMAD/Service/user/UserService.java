@@ -67,15 +67,20 @@ public class UserService {
                         PasswordEncoder passwordEncoder,
                         UserDTOMapper userDTOMapper,
                         EmailService emailService) {
+
                 if (userRepo == null) {
                         throw new RuntimeException("userRepo cannot be null");
                 }
+
                 if (passwordEncoder == null) {
                         throw new RuntimeException("passwordEncoder cannot be null");
                 }
+
                 if (emailService == null) {
                         throw new RuntimeException("emailService cannot be null");
                 }
+
+
                 this.userRepo = userRepo;
                 this.passwordEncoder = passwordEncoder;
                 this.jwtService = jwtService;
@@ -126,6 +131,10 @@ public class UserService {
                 return userRepo.findUserByUsername(username);
         }
 
+        public User saveUser(User user) {
+                return userRepo.save(user);
+        }
+
         public LoginResponse login(String username, String password) {
                 User user = userRepo.findUserByUsername(username)
                                 .orElseGet(() -> userRepo.findUserByEmail(username)
@@ -173,10 +182,9 @@ public class UserService {
                                 passwordEncoder.encode(password),
                                 email);
 
-                //newUser.setVerified(false);
-//Email verification
-                newUser.setVerified(true);
+                newUser.setVerified(false);
 
+                // Email verification
                 String code = generateVerificationCode();
 
                 newUser.setVerificationCode(code);
@@ -190,24 +198,21 @@ public class UserService {
                                 now);
 
                 userRepo.save(newUser);
-                
-                
-//turn back on for email verification
 
-                // try {
+                try {
 
-                //         emailService.sendVerificationEmail(
-                //                         email,
-                //                         code);
+                        emailService.sendVerificationEmail(
+                                        email,
+                                        code);
 
-                // } catch (Exception e) {
+                } catch (Exception e) {
 
-                //         e.printStackTrace();
+                        e.printStackTrace();
 
-                //         throw new RuntimeException(
-                //                         "Verification email failed: " + e.getMessage());
+                        throw new RuntimeException(
+                                        "Verification email failed: " + e.getMessage());
 
-                // }
+                }
         }
 
         public void verifyUser(
@@ -390,10 +395,10 @@ public class UserService {
 
                 userRepo.save(user);
 
-//EMAIL VERIFICATION
+                // EMAIL VERIFICATION
                 // emailService.sendPasswordResetEmail(
-                //                 email,
-                //                 code);
+                // email,
+                // code);
 
         }
 

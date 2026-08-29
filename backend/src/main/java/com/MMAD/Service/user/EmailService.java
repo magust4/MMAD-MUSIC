@@ -1,77 +1,98 @@
 package com.MMAD.Service.user;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import jakarta.mail.internet.MimeMessage;
-
-// import com.resend.Resend;
-// import com.resend.services.emails.model.CreateEmailOptions;
+import com.resend.Resend;
+import com.resend.services.emails.model.CreateEmailOptions;
 
 @Service
 public class EmailService {
 
-        @Autowired
-        private JavaMailSender mailSender;
+        private final Resend resend;
+        private final String fromEmail;
 
-        private final String FROM_EMAIL = "YOUR_GMAIL@gmail.com";
+        public EmailService(
+                        @Value("${resend.api-key}") String apiKey,
+                        @Value("${resend.from-email}") String fromEmail) {
 
-        /*
-         * // -------- RESEND VERSION --------
-         * private final Resend resend;
-         * 
-         * public EmailService(@Value("${resend.api.key}") String apiKey) {
-         * this.resend = new Resend(apiKey);
-         * }
-         */
+                this.resend = new Resend(apiKey);
+                this.fromEmail = fromEmail;
+        }
 
-        public void sendVerificationEmail(String email, String code) {
+        public void sendVerificationEmail(
+                        String email,
+                        String code) {
 
                 try {
 
-                        MimeMessage message = mailSender.createMimeMessage();
+                        CreateEmailOptions params = CreateEmailOptions.builder()
+                                        .from("MMAD Music <" + fromEmail + ">")
+                                        .to(email)
+                                        .subject("MMAD Music Verification Code")
+                                        .html("""
+                                                        <h2>Welcome to MMAD Music!</h2>
 
-                        MimeMessageHelper helper = new MimeMessageHelper(message, true);
+                                                        <p>Your verification code is:</p>
 
-                        helper.setFrom(FROM_EMAIL);
-                        helper.setTo(email);
-                        helper.setSubject("MMAD Music Verification Code");
+                                                        <h1>%s</h1>
 
-                        helper.setText("""
-                                        <h2>Welcome to MMAD Music!</h2>
+                                                        <p>
+                                                            Enter this code to verify your account.
+                                                        </p>
 
-                                        <p>Your verification code is:</p>
+                                                        <p>
+                                                            This code expires in 15 minutes.
+                                                        </p>
+                                                        """.formatted(code))
+                                        .build();
 
-                                        <h1>%s</h1>
-
-                                        <p>Enter this code to verify your account.</p>
-                                        """.formatted(code), true);
-
-                        mailSender.send(message);
+                        resend.emails().send(params);
 
                 } catch (Exception e) {
-                        throw new RuntimeException("Failed to send verification email", e);
+
+                        e.printStackTrace();
+
+                        throw new RuntimeException(
+                                        "Failed to send verification email: " + e.getMessage(),
+                                        e);
                 }
         }
 
-        public void sendPasswordResetEmail(String email, String code) {
+        public void sendPasswordResetEmail(
+                        String email,
+                        String code) {
 
-                SimpleMailMessage message = new SimpleMailMessage();
+                try {
 
-                message.setFrom(FROM_EMAIL);
-                message.setTo(email);
-                message.setSubject("MMAD Music Password Reset");
+                        CreateEmailOptions params = CreateEmailOptions.builder()
+                                        .from("MMAD Music <" + fromEmail + ">")
+                                        .to(email)
+                                        .subject("MMAD Music Password Reset")
+                                        .html("""
+                                                        <h2>MMAD Music Password Reset</h2>
 
-                message.setText(
-                                "Password Reset Request\n\n"
-                                                + "Your password reset code is:\n\n"
-                                                + code
-                                                + "\n\nEnter this code to reset your password.");
+                                                        <p>Your password reset code is:</p>
 
-                mailSender.send(message);
+                                                        <h1>%s</h1>
+
+                                                        <p>
+                                                            Enter this code to reset your password.
+                                                        </p>
+
+                                                        <p>
+                                                            This code expires in 15 minutes.
+                                                        </p>
+                                                        """.formatted(code))
+                                        .build();
+
+                        resend.emails().send(params);
+
+                } catch (Exception e) {
+
+                        throw new RuntimeException(
+                                        "Failed to send password reset email",
+                                        e);
+                }
         }
-
 }

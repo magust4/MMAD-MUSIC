@@ -36,7 +36,9 @@ public class UserController {
      * 
      * @param userService The UserService to be used.
      */
-    public UserController(UserService userService) {
+    public UserController(
+            UserService userService) {
+
         this.userService = userService;
     }
 

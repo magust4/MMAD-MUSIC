@@ -41,7 +41,8 @@ public class SecurityConfig {
                                 "/user/verify",
                                 "/user/forgot-password",
                                 "/user/reset-password",
-                                "/user/resend-verification")
+                                "/user/resend-verification",
+                                "/user/test-email")
                         .permitAll()
                         .requestMatchers("/search/**").permitAll()
                         .anyRequest().authenticated())
