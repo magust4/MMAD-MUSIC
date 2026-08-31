@@ -4,7 +4,6 @@ import com.MMAD.dto.user.UserDTO;
 
 public class UserSearchResultDTO extends SearchResultDTO {
 
-
     public UserSearchResultDTO(
             Long id,
             String username,
@@ -12,7 +11,6 @@ public class UserSearchResultDTO extends SearchResultDTO {
     ) {
         super(username, imageURL, "user");
     }
-
 
     public static UserSearchResultDTO fromDTO(UserDTO user) {
 
@@ -23,7 +21,7 @@ public class UserSearchResultDTO extends SearchResultDTO {
         return new UserSearchResultDTO(
                 null,
                 user.username(),
-                "https://ui-avatars.com/api/?name=" + user.username()
+                user.profilePicUrl()
         );
     }
 }

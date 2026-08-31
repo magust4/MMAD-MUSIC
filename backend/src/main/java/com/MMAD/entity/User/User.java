@@ -24,8 +24,8 @@ public class User implements Serializable {
     @Column(nullable = false)
     private String password;
 
-    @Column(nullable = false)
-    private String profilePicUrl = "/assets/images/default-profile.png";
+    @Column
+    private String profilePicUrl;
 
 
     // -----------------------------

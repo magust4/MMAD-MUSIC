@@ -12,7 +12,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.MMAD.Service.s3.S3Service;
+import com.MMAD.entity.User.User;
 import com.MMAD.Service.user.UserService;
 import com.MMAD.dto.MessageResponse;
 import com.MMAD.dto.user.ForgotPasswordRequest;
@@ -30,6 +34,7 @@ import jakarta.transaction.Transactional;
 public class UserController {
 
     private final UserService userService;
+    private final S3Service s3Service;
 
     /**
      * Constructor for UserResource.
@@ -37,9 +42,11 @@ public class UserController {
      * @param userService The UserService to be used.
      */
     public UserController(
-            UserService userService) {
+            UserService userService,
+            S3Service s3Service) {
 
         this.userService = userService;
+        this.s3Service = s3Service;
     }
 
     /**
@@ -131,6 +138,107 @@ public class UserController {
                             false,
                             e.getMessage()));
 
+        }
+    }
+
+    @PostMapping("/upload-profile-picture")
+    public ResponseEntity<String> uploadProfilePicture(
+            @RequestPart("file") MultipartFile file,
+            Authentication authentication) {
+
+        try {
+
+            // -----------------------------
+            // Validate file
+            // -----------------------------
+
+            if (file == null || file.isEmpty()) {
+
+                return ResponseEntity
+                        .badRequest()
+                        .body("Please select an image.");
+            }
+
+            // 5 MB maximum
+            long maxFileSize = 5 * 1024 * 1024;
+
+            if (file.getSize() > maxFileSize) {
+
+                return ResponseEntity
+                        .badRequest()
+                        .body("Profile picture must be smaller than 5 MB.");
+            }
+
+            String contentType = file.getContentType();
+
+            if (contentType == null ||
+                    !contentType.startsWith("image/")) {
+
+                return ResponseEntity
+                        .badRequest()
+                        .body("Only image files are allowed.");
+            }
+
+            // -----------------------------
+            // Get authenticated user
+            // -----------------------------
+
+            String username = authentication.getName();
+
+            User user = userService
+                    .getUserByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // Save the old profile picture
+            String oldProfilePicUrl = user.getProfilePicUrl();
+
+            // -----------------------------
+            // Upload new picture
+            // -----------------------------
+
+            String newFileKey = s3Service.uploadProfilePicture(file);
+
+            // -----------------------------
+            // Update database
+            // -----------------------------
+
+            user.setProfilePicUrl(newFileKey);
+
+            userService.saveUser(user);
+
+            // -----------------------------
+            // Delete old S3 picture
+            // -----------------------------
+
+            if (oldProfilePicUrl != null &&
+                    oldProfilePicUrl.startsWith(
+                            "profile-pictures/")) {
+
+                try {
+
+                    s3Service.deleteProfilePicture(
+                            oldProfilePicUrl);
+
+                } catch (Exception e) {
+
+                    // The new picture is already saved,
+                    // so don't fail the request if cleanup fails.
+
+                    System.err.println(
+                            "Failed to delete old profile picture: "
+                                    + e.getMessage());
+                }
+            }
+
+            return ResponseEntity.ok(newFileKey);
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to upload profile picture.");
         }
     }
 
