@@ -10,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.MMAD.Service.item.ItemService;
 import com.MMAD.Service.user.UserService;
+import com.MMAD.Service.s3.S3Service;
 import com.MMAD.dto.review.GetReviewResponse;
 import com.MMAD.dto.review.ItemReviewResponse;
 import com.MMAD.dto.review.ItemReviewsResponse;
@@ -30,17 +31,20 @@ public class ReviewService {
         private final UserService userService;
         private final ItemService itemService;
         private final ReviewLikeService reviewLikeService;
+        private final S3Service s3Service;
 
         public ReviewService(
                         ReviewRepo reviewRepo,
                         UserService userService,
                         ItemService itemService,
-                        ReviewLikeService reviewLikeService) {
+                        ReviewLikeService reviewLikeService,
+                        S3Service s3Service) {
 
                 this.reviewRepo = reviewRepo;
                 this.userService = userService;
                 this.itemService = itemService;
                 this.reviewLikeService = reviewLikeService;
+                this.s3Service = s3Service;
         }
 
         // CREATE
@@ -98,6 +102,8 @@ public class ReviewService {
 
                 return GetReviewResponse.fromEntity(
                                 savedReview,
+                                s3Service.generatePresignedUrl(
+                                        savedReview.getUser().getProfilePicUrl()),
                                 0,
                                 false);
         }
@@ -116,10 +122,10 @@ public class ReviewService {
                 return reviews.stream()
                                 .map(review -> GetReviewResponse.fromEntity(
                                                 review,
-                                                reviewLikeService.getLikeCount(
-                                                                review.getId()),
-                                                isLikedByCurrentUser(
-                                                                review.getId())))
+                                                s3Service.generatePresignedUrl(
+                                                                review.getUser().getProfilePicUrl()),
+                                                reviewLikeService.getLikeCount(review.getId()),
+                                                isLikedByCurrentUser(review.getId())))
                                 .toList();
         }
 
@@ -132,6 +138,8 @@ public class ReviewService {
 
                 return GetReviewResponse.fromEntity(
                                 review,
+                                s3Service.generatePresignedUrl(
+                                        review.getUser().getProfilePicUrl()),
                                 reviewLikeService.getLikeCount(id),
                                 isLikedByCurrentUser(id));
         }
@@ -150,6 +158,8 @@ public class ReviewService {
                 return reviews.stream()
                                 .map(review -> GetReviewResponse.fromEntity(
                                                 review,
+                                                s3Service.generatePresignedUrl(
+                                                                review.getUser().getProfilePicUrl()),
                                                 reviewLikeService.getLikeCount(
                                                                 review.getId()),
                                                 isLikedByCurrentUser(
@@ -185,8 +195,12 @@ public class ReviewService {
                 return reviews.stream()
                                 .map(review -> GetReviewResponse.fromEntity(
                                                 review,
-                                                reviewLikeService.getLikeCount(review.getId()),
-                                                isLikedByCurrentUser(review.getId())))
+                                                s3Service.generatePresignedUrl(
+                                                                review.getUser().getProfilePicUrl()),
+                                                reviewLikeService.getLikeCount(
+                                                                review.getId()),
+                                                isLikedByCurrentUser(
+                                                                review.getId())))
                                 .toList();
         }
 
@@ -202,6 +216,8 @@ public class ReviewService {
                                                 itemId)
                                 .map(review -> GetReviewResponse.fromEntity(
                                                 review,
+                                                s3Service.generatePresignedUrl(
+                                                                review.getUser().getProfilePicUrl()),
                                                 reviewLikeService.getLikeCount(
                                                                 review.getId()),
                                                 isLikedByCurrentUser(
@@ -227,6 +243,8 @@ public class ReviewService {
 
                 return GetReviewResponse.fromEntity(
                                 review,
+                                s3Service.generatePresignedUrl(
+                                        review.getUser().getProfilePicUrl()),
                                 reviewLikeService.getLikeCount(reviewId),
                                 isLikedByCurrentUser(reviewId));
         }

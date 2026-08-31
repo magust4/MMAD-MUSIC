@@ -20,28 +20,27 @@ public class UserDTOMapper implements Function<User, UserDTO> {
     @Override
     public UserDTO apply(User user) {
 
-        String profilePicUrl = user.getProfilePicUrl();
+        String profilePicUrl = null;
 
-        // Only generate a presigned URL for S3 profile pictures.
-        // Keep the default local image path unchanged.
-        if (profilePicUrl != null &&
-                profilePicUrl.startsWith("profile-pictures/")) {
+        if (user.getProfilePicUrl() != null &&
+            !user.getProfilePicUrl().isBlank()) {
 
-            profilePicUrl =
-                    s3Service.generatePresignedUrl(profilePicUrl);
+            profilePicUrl = s3Service.generatePresignedUrl(
+                user.getProfilePicUrl()
+            );
         }
 
         return new UserDTO(
-                user.getUsername(),
-                profilePicUrl,
-                user.getFollowing()
-                        .stream()
-                        .map(User::getUsername)
-                        .collect(Collectors.toList()),
-                user.getFollowers()
-                        .stream()
-                        .map(User::getUsername)
-                        .collect(Collectors.toList())
+            user.getUsername(),
+            profilePicUrl,
+            user.getFollowing()
+                .stream()
+                .map(User::getUsername)
+                .collect(Collectors.toList()),
+            user.getFollowers()
+                .stream()
+                .map(User::getUsername)
+                .collect(Collectors.toList())
         );
     }
 }

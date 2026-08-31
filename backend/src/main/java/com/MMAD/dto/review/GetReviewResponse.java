@@ -12,7 +12,9 @@ public class GetReviewResponse {
     private String description;
 
     private ItemDTO item;
+
     private String username;
+    private String profilePicUrl;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -26,6 +28,7 @@ public class GetReviewResponse {
             String description,
             ItemDTO item,
             String username,
+            String profilePicUrl,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
             long likeCount,
@@ -36,6 +39,7 @@ public class GetReviewResponse {
         this.description = description;
         this.item = item;
         this.username = username;
+        this.profilePicUrl = profilePicUrl;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.likeCount = likeCount;
@@ -114,8 +118,17 @@ public class GetReviewResponse {
         this.likedByCurrentUser = likedByCurrentUser;
     }
 
+    public String getProfilePicUrl() {
+        return profilePicUrl;
+    }
+
+    public void setProfilePicUrl(String profilePicUrl) {
+        this.profilePicUrl = profilePicUrl;
+    }
+
     public static GetReviewResponse fromEntity(
             Review review,
+            String profilePicUrl,
             long likeCount,
             boolean likedByCurrentUser) {
 
@@ -124,14 +137,15 @@ public class GetReviewResponse {
         }
 
         return new GetReviewResponse(
-                review.getId(),
-                review.getRating(),
-                review.getDescription(),
-                ItemDTO.fromEntity(review.getItem()),
-                review.getUser().getUsername(),
-                review.getCreatedAt(),
-                review.getUpdatedAt(),
-                likeCount,
-                likedByCurrentUser);
-    }
+            review.getId(),
+            review.getRating(),
+            review.getDescription(),
+            ItemDTO.fromEntity(review.getItem()),
+            review.getUser().getUsername(),
+            profilePicUrl,
+            review.getCreatedAt(),
+            review.getUpdatedAt(),
+            likeCount,
+            likedByCurrentUser);
+        }
 }
