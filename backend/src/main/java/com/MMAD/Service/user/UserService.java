@@ -395,10 +395,10 @@ public class UserService {
 
                 userRepo.save(user);
 
-                // EMAIL VERIFICATION
-                // emailService.sendPasswordResetEmail(
-                // email,
-                // code);
+                //EMAIL VERIFICATION
+                emailService.sendPasswordResetEmail(
+                email,
+                code);
 
         }
 
