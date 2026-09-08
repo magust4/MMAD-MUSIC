@@ -1,5 +1,6 @@
 package com.MMAD.repo.Review;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,5 +19,8 @@ public interface ReviewLikeRepo
             Long reviewId);
 
     long countByReviewId(
+            Long reviewId);
+
+    List<ReviewLike> findByReviewId(
             Long reviewId);
 }

@@ -1,6 +1,8 @@
 package com.MMAD.Service.Review;
 
-import jakarta.persistence.EntityNotFoundException;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -9,8 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.MMAD.Service.item.ItemService;
-import com.MMAD.Service.user.UserService;
 import com.MMAD.Service.s3.S3Service;
+import com.MMAD.Service.user.UserService;
 import com.MMAD.dto.review.GetReviewResponse;
 import com.MMAD.dto.review.ItemReviewResponse;
 import com.MMAD.dto.review.ItemReviewsResponse;
@@ -20,271 +22,266 @@ import com.MMAD.entity.item.Item;
 import com.MMAD.exception.UserNotFoundException;
 import com.MMAD.repo.Review.ReviewRepo;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class ReviewService {
 
-        private final ReviewRepo reviewRepo;
-        private final UserService userService;
-        private final ItemService itemService;
-        private final ReviewLikeService reviewLikeService;
-        private final S3Service s3Service;
+    private final ReviewRepo reviewRepo;
+    private final UserService userService;
+    private final ItemService itemService;
+    private final ReviewLikeService reviewLikeService;
+    private final S3Service s3Service;
 
-        public ReviewService(
-                        ReviewRepo reviewRepo,
-                        UserService userService,
-                        ItemService itemService,
-                        ReviewLikeService reviewLikeService,
-                        S3Service s3Service) {
+    public ReviewService(
+            ReviewRepo reviewRepo,
+            UserService userService,
+            ItemService itemService,
+            ReviewLikeService reviewLikeService,
+            S3Service s3Service) {
 
-                this.reviewRepo = reviewRepo;
-                this.userService = userService;
-                this.itemService = itemService;
-                this.reviewLikeService = reviewLikeService;
-                this.s3Service = s3Service;
+        this.reviewRepo = reviewRepo;
+        this.userService = userService;
+        this.itemService = itemService;
+        this.reviewLikeService = reviewLikeService;
+        this.s3Service = s3Service;
+    }
+
+    // CREATE
+    @Transactional
+    public GetReviewResponse createReview(
+            Long itemId,
+            int rating,
+            String description) {
+
+        if (itemId == null || itemId <= 0) {
+            throw new IllegalArgumentException(
+                    "Item ID cannot be null or non-positive.");
         }
 
-        // CREATE
-
-        @Transactional
-        public GetReviewResponse createReview(
-                        Long itemId,
-                        int rating,
-                        String description) {
-
-                if (itemId == null || itemId <= 0) {
-                        throw new IllegalArgumentException(
-                                        "Item ID cannot be null or non-positive.");
-                }
-
-                if (rating < 1 || rating > 5) {
-                        throw new IllegalArgumentException(
-                                        "Rating must be between 1 and 5.");
-                }
-
-                if (description == null || description.trim().isEmpty()) {
-                        throw new IllegalArgumentException(
-                                        "Review description cannot be null or empty.");
-                }
-
-                String username = SecurityContextHolder
-                                .getContext()
-                                .getAuthentication()
-                                .getName();
-
-                User user = userService.getUserByUsername(username)
-                                .orElseThrow(() -> new EntityNotFoundException(
-                                                "User not found"));
-
-                Item item = itemService.getItemEntityById(itemId)
-                                .orElseThrow(() -> new EntityNotFoundException(
-                                                "Item not found"));
-
-                if (reviewRepo.findByUserIdAndItemId(
-                                user.getId(),
-                                item.getId()).isPresent()) {
-
-                        throw new ResponseStatusException(
-                                        HttpStatus.CONFLICT,
-                                        "UserAlreadyReviewed");
-                }
-
-                Review review = new Review(
-                                rating,
-                                description,
-                                item,
-                                user);
-
-                Review savedReview = reviewRepo.save(review);
-
-                return GetReviewResponse.fromEntity(
-                                savedReview,
-                                s3Service.generatePresignedUrl(
-                                        savedReview.getUser().getProfilePicUrl()),
-                                0,
-                                false);
+        if (rating < 1 || rating > 5) {
+            throw new IllegalArgumentException(
+                    "Rating must be between 1 and 5.");
         }
 
-        // READ
-
-        @Transactional(readOnly = true)
-        public List<GetReviewResponse> getAllReviews() {
-
-                List<Review> reviews = reviewRepo.findAll();
-
-                reviews.sort((a, b) -> getReviewSortTime(b)
-                                .compareTo(
-                                                getReviewSortTime(a)));
-
-                return reviews.stream()
-                                .map(review -> GetReviewResponse.fromEntity(
-                                                review,
-                                                s3Service.generatePresignedUrl(
-                                                                review.getUser().getProfilePicUrl()),
-                                                reviewLikeService.getLikeCount(review.getId()),
-                                                isLikedByCurrentUser(review.getId())))
-                                .toList();
+        if (description == null || description.trim().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Review description cannot be null or empty.");
         }
 
-        @Transactional(readOnly = true)
-        public GetReviewResponse getReviewById(Long id) {
+        String username = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
 
-                Review review = reviewRepo.findById(id)
-                                .orElseThrow(() -> new EntityNotFoundException(
-                                                "Review not found"));
+        User user = userService.getUserByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException(
+                "User not found"));
 
-                return GetReviewResponse.fromEntity(
+        Item item = itemService.getItemEntityById(itemId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                "Item not found"));
+
+        if (reviewRepo.findByUserIdAndItemId(
+                user.getId(),
+                item.getId()).isPresent()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "UserAlreadyReviewed");
+        }
+
+        Review review = new Review(
+                rating,
+                description,
+                item,
+                user);
+
+        Review savedReview = reviewRepo.save(review);
+
+        return GetReviewResponse.fromEntity(
+                savedReview,
+                s3Service.generatePresignedUrl(
+                        savedReview.getUser().getProfilePicUrl()),
+                0,
+                false,
+                List.of());
+    }
+
+    // READ
+    @Transactional(readOnly = true)
+    public List<GetReviewResponse> getAllReviews() {
+
+        List<Review> reviews = reviewRepo.findAll();
+
+        reviews.sort((a, b) -> getReviewSortTime(b)
+                .compareTo(
+                        getReviewSortTime(a)));
+
+        return reviews.stream()
+                .map(review -> GetReviewResponse.fromEntity(
+                review,
+                s3Service.generatePresignedUrl(
+                        review.getUser().getProfilePicUrl()),
+                reviewLikeService.getLikeCount(review.getId()),
+                isLikedByCurrentUser(review.getId()),
+                reviewLikeService.getUsersWhoLiked(review.getId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public GetReviewResponse getReviewById(Long id) {
+
+        Review review = reviewRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                "Review not found"));
+
+        return GetReviewResponse.fromEntity(
+                review,
+                s3Service.generatePresignedUrl(
+                        review.getUser().getProfilePicUrl()),
+                reviewLikeService.getLikeCount(id),
+                isLikedByCurrentUser(id),
+                reviewLikeService.getUsersWhoLiked(review.getId()));
+    }
+
+    @Transactional(readOnly = true)
+    public List<GetReviewResponse> getReviewsByUsername(
+            String username) {
+
+        User user = userService.getUserByUsername(username)
+                .orElseThrow(() -> new UserNotFoundException(
+                "User not found"));
+
+        List<Review> reviews = reviewRepo.findByUserIdOrderByIdDesc(
+                user.getId());
+
+        return reviews.stream()
+        .map(review -> GetReviewResponse.fromEntity(
+                review,
+                s3Service.generatePresignedUrl(
+                        review.getUser().getProfilePicUrl()),
+                reviewLikeService.getLikeCount(review.getId()),
+                isLikedByCurrentUser(review.getId()),
+                reviewLikeService.getUsersWhoLiked(review.getId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ItemReviewsResponse getReviewsByItemId(
+            Long itemId) {
+
+        List<ItemReviewResponse> reviews = reviewRepo.findReviewResponsesByItemId(itemId);
+
+        return new ItemReviewsResponse(
+                itemId,
+                reviews);
+    }
+
+    @Transactional(readOnly = true)
+    public List<GetReviewResponse> getFeedReviews(String username) {
+
+        User user = userService.getUserByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        List<Review> reviews;
+
+        if (user.getFollowing().isEmpty()) {
+            reviews = reviewRepo.findTop10ByOrderByCreatedAtDesc();
+        } else {
+            reviews = reviewRepo.findFeedReviews(user.getId());
+        }
+
+        return reviews.stream()
+        .map(review -> GetReviewResponse.fromEntity(
+                review,
+                s3Service.generatePresignedUrl(
+                        review.getUser().getProfilePicUrl()),
+                reviewLikeService.getLikeCount(review.getId()),
+                isLikedByCurrentUser(review.getId()),
+                reviewLikeService.getUsersWhoLiked(review.getId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<GetReviewResponse> getMyReviewForItem(
+            Long itemId) {
+
+        User user = userService.getCurrentUserEntity();
+
+        return reviewRepo
+                .findByUserIdAndItemId(
+                        user.getId(),
+                        itemId)
+                        .map(review -> GetReviewResponse.fromEntity(
                                 review,
                                 s3Service.generatePresignedUrl(
                                         review.getUser().getProfilePicUrl()),
-                                reviewLikeService.getLikeCount(id),
-                                isLikedByCurrentUser(id));
+                                reviewLikeService.getLikeCount(review.getId()),
+                                isLikedByCurrentUser(review.getId()),
+                                reviewLikeService.getUsersWhoLiked(review.getId())));
+    }
+
+    // UPDATE
+    @Transactional
+    public GetReviewResponse updateReview(
+            Long reviewId,
+            int newRating,
+            String newDescription) {
+
+        Review review = reviewRepo.findById(reviewId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                "Review not found"));
+
+        review.setRating(newRating);
+        review.setDescription(newDescription);
+
+        reviewRepo.save(review);
+
+        return GetReviewResponse.fromEntity(
+                review,
+                s3Service.generatePresignedUrl(
+                        review.getUser().getProfilePicUrl()),
+                reviewLikeService.getLikeCount(reviewId),
+                isLikedByCurrentUser(reviewId),
+                reviewLikeService.getUsersWhoLiked(review.getId()));
+    }
+
+    // DELETE
+    @Transactional
+    public void deleteReview(Long reviewId) {
+
+        if (!reviewRepo.existsById(reviewId)) {
+
+            throw new EntityNotFoundException(
+                    "Review not found");
         }
 
-        @Transactional(readOnly = true)
-        public List<GetReviewResponse> getReviewsByUsername(
-                        String username) {
+        reviewRepo.deleteById(reviewId);
+    }
 
-                User user = userService.getUserByUsername(username)
-                                .orElseThrow(() -> new UserNotFoundException(
-                                                "User not found"));
+    private LocalDateTime getReviewSortTime(
+            Review review) {
 
-                List<Review> reviews = reviewRepo.findByUserIdOrderByIdDesc(
-                                user.getId());
+        return review.getUpdatedAt() != null
+                ? review.getUpdatedAt()
+                : review.getCreatedAt();
+    }
 
-                return reviews.stream()
-                                .map(review -> GetReviewResponse.fromEntity(
-                                                review,
-                                                s3Service.generatePresignedUrl(
-                                                                review.getUser().getProfilePicUrl()),
-                                                reviewLikeService.getLikeCount(
-                                                                review.getId()),
-                                                isLikedByCurrentUser(
-                                                                review.getId())))
-                                .toList();
-        }
+    private boolean isLikedByCurrentUser(
+            Long reviewId) {
 
-        @Transactional(readOnly = true)
-        public ItemReviewsResponse getReviewsByItemId(
-                        Long itemId) {
+        String username = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
 
-                List<ItemReviewResponse> reviews = reviewRepo.findReviewResponsesByItemId(itemId);
+        User user = userService.getUserByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException(
+                "User not found"));
 
-                return new ItemReviewsResponse(
-                                itemId,
-                                reviews);
-        }
-
-        @Transactional(readOnly = true)
-        public List<GetReviewResponse> getFeedReviews(String username) {
-
-                User user = userService.getUserByUsername(username)
-                                .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-                List<Review> reviews;
-
-                if (user.getFollowing().isEmpty()) {
-                        reviews = reviewRepo.findTop10ByOrderByCreatedAtDesc();
-                } else {
-                        reviews = reviewRepo.findFeedReviews(user.getId());
-                }
-
-                return reviews.stream()
-                                .map(review -> GetReviewResponse.fromEntity(
-                                                review,
-                                                s3Service.generatePresignedUrl(
-                                                                review.getUser().getProfilePicUrl()),
-                                                reviewLikeService.getLikeCount(
-                                                                review.getId()),
-                                                isLikedByCurrentUser(
-                                                                review.getId())))
-                                .toList();
-        }
-
-        @Transactional(readOnly = true)
-        public Optional<GetReviewResponse> getMyReviewForItem(
-                        Long itemId) {
-
-                User user = userService.getCurrentUserEntity();
-
-                return reviewRepo
-                                .findByUserIdAndItemId(
-                                                user.getId(),
-                                                itemId)
-                                .map(review -> GetReviewResponse.fromEntity(
-                                                review,
-                                                s3Service.generatePresignedUrl(
-                                                                review.getUser().getProfilePicUrl()),
-                                                reviewLikeService.getLikeCount(
-                                                                review.getId()),
-                                                isLikedByCurrentUser(
-                                                                review.getId())));
-        }
-
-        // UPDATE
-
-        @Transactional
-        public GetReviewResponse updateReview(
-                        Long reviewId,
-                        int newRating,
-                        String newDescription) {
-
-                Review review = reviewRepo.findById(reviewId)
-                                .orElseThrow(() -> new EntityNotFoundException(
-                                                "Review not found"));
-
-                review.setRating(newRating);
-                review.setDescription(newDescription);
-
-                reviewRepo.save(review);
-
-                return GetReviewResponse.fromEntity(
-                                review,
-                                s3Service.generatePresignedUrl(
-                                        review.getUser().getProfilePicUrl()),
-                                reviewLikeService.getLikeCount(reviewId),
-                                isLikedByCurrentUser(reviewId));
-        }
-
-        // DELETE
-
-        @Transactional
-        public void deleteReview(Long reviewId) {
-
-                if (!reviewRepo.existsById(reviewId)) {
-
-                        throw new EntityNotFoundException(
-                                        "Review not found");
-                }
-
-                reviewRepo.deleteById(reviewId);
-        }
-
-        private LocalDateTime getReviewSortTime(
-                        Review review) {
-
-                return review.getUpdatedAt() != null
-                                ? review.getUpdatedAt()
-                                : review.getCreatedAt();
-        }
-
-        private boolean isLikedByCurrentUser(
-                        Long reviewId) {
-
-                String username = SecurityContextHolder
-                                .getContext()
-                                .getAuthentication()
-                                .getName();
-
-                User user = userService.getUserByUsername(username)
-                                .orElseThrow(() -> new EntityNotFoundException(
-                                                "User not found"));
-
-                return reviewLikeService.hasLiked(
-                                user.getId(),
-                                reviewId);
-        }
+        return reviewLikeService.hasLiked(
+                user.getId(),
+                reviewId);
+    }
 }

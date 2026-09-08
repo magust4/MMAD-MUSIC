@@ -1,79 +1,89 @@
 package com.MMAD.Service.Review;
 
+
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
 import com.MMAD.entity.Review.Review;
 import com.MMAD.entity.Review.ReviewLike;
 import com.MMAD.entity.User.User;
-import com.MMAD.repo.UserRepo;
 import com.MMAD.repo.Review.ReviewLikeRepo;
 import com.MMAD.repo.Review.ReviewRepo;
+import com.MMAD.repo.UserRepo;
 
 @Service
 public class ReviewLikeService {
 
-        private final ReviewLikeRepo reviewLikeRepo;
-        private final UserRepo userRepo;
-        private final ReviewRepo reviewRepo;
+    private final ReviewLikeRepo reviewLikeRepo;
+    private final UserRepo userRepo;
+    private final ReviewRepo reviewRepo;
 
-        public ReviewLikeService(
-                        ReviewLikeRepo reviewLikeRepo,
-                        UserRepo userRepo,
-                        ReviewRepo reviewRepo) {
+    public ReviewLikeService(
+            ReviewLikeRepo reviewLikeRepo,
+            UserRepo userRepo,
+            ReviewRepo reviewRepo) {
 
-                this.reviewLikeRepo = reviewLikeRepo;
-                this.userRepo = userRepo;
-                this.reviewRepo = reviewRepo;
+        this.reviewLikeRepo = reviewLikeRepo;
+        this.userRepo = userRepo;
+        this.reviewRepo = reviewRepo;
+    }
+
+    public void likeReview(
+            Long userId,
+            Long reviewId) {
+        if (reviewLikeRepo.existsByUserIdAndReviewId(
+                userId,
+                reviewId)) {
+
+            throw new RuntimeException(
+                    "Review already liked");
         }
 
-        public void likeReview(
-                        Long userId,
-                        Long reviewId) {
-                if (reviewLikeRepo.existsByUserIdAndReviewId(
-                                userId,
-                                reviewId)) {
+        User user = userRepo.findById(userId)
+                .orElseThrow();
 
-                        throw new RuntimeException(
-                                        "Review already liked");
-                }
+        Review review = reviewRepo.findById(reviewId)
+                .orElseThrow();
 
-                User user = userRepo.findById(userId)
-                                .orElseThrow();
+        ReviewLike like = new ReviewLike(
+                user,
+                review);
 
-                Review review = reviewRepo.findById(reviewId)
-                                .orElseThrow();
+        ReviewLike saved = reviewLikeRepo.save(like);
+    }
 
-                ReviewLike like = new ReviewLike(
-                                user,
-                                review);
+    public void unlikeReview(
+            Long userId,
+            Long reviewId) {
 
-                ReviewLike saved = reviewLikeRepo.save(like);
-        }
+        ReviewLike like = reviewLikeRepo
+                .findByUserIdAndReviewId(
+                        userId,
+                        reviewId)
+                .orElseThrow();
 
-        public void unlikeReview(
-                        Long userId,
-                        Long reviewId) {
+        reviewLikeRepo.delete(like);
+    }
 
-                ReviewLike like = reviewLikeRepo
-                                .findByUserIdAndReviewId(
-                                                userId,
-                                                reviewId)
-                                .orElseThrow();
+    public long getLikeCount(Long reviewId) {
 
-                reviewLikeRepo.delete(like);
-        }
+        return reviewLikeRepo.countByReviewId(reviewId);
+    }
 
-        public long getLikeCount(Long reviewId) {
+    public boolean hasLiked(
+            Long userId,
+            Long reviewId) {
 
-                return reviewLikeRepo.countByReviewId(reviewId);
-        }
+        return reviewLikeRepo.existsByUserIdAndReviewId(
+                userId,
+                reviewId);
+    }
 
-        public boolean hasLiked(
-                        Long userId,
-                        Long reviewId) {
-
-                return reviewLikeRepo.existsByUserIdAndReviewId(
-                                userId,
-                                reviewId);
-        }
+    public List<String> getUsersWhoLiked(Long reviewId) {
+        return reviewLikeRepo.findByReviewId(reviewId)
+                .stream()
+                .map(like -> like.getUser().getUsername())
+                .toList();
+    }
 }

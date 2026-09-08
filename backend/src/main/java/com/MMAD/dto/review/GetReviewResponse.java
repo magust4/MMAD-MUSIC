@@ -1,6 +1,7 @@
 package com.MMAD.dto.review;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.MMAD.dto.item.ItemDTO;
 import com.MMAD.entity.Review.Review;
@@ -22,6 +23,8 @@ public class GetReviewResponse {
     private long likeCount;
     private boolean likedByCurrentUser;
 
+    private List<String> likedBy;
+
     public GetReviewResponse(
             Long id,
             int rating,
@@ -32,7 +35,8 @@ public class GetReviewResponse {
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
             long likeCount,
-            boolean likedByCurrentUser) {
+            boolean likedByCurrentUser,
+            List<String> likedBy) {
 
         this.id = id;
         this.rating = rating;
@@ -44,6 +48,7 @@ public class GetReviewResponse {
         this.updatedAt = updatedAt;
         this.likeCount = likeCount;
         this.likedByCurrentUser = likedByCurrentUser;
+        this.likedBy = likedBy;
     }
 
     public Long getId() {
@@ -126,26 +131,37 @@ public class GetReviewResponse {
         this.profilePicUrl = profilePicUrl;
     }
 
+    public List<String> getLikedBy() {
+        return likedBy;
+    }
+
+    public void setLikedBy(List<String> likedBy) {
+        this.likedBy = likedBy;
+    }
+
     public static GetReviewResponse fromEntity(
             Review review,
             String profilePicUrl,
             long likeCount,
-            boolean likedByCurrentUser) {
+            boolean likedByCurrentUser,
+            List<String> likedBy) {
 
         if (review == null) {
             return null;
         }
 
         return new GetReviewResponse(
-            review.getId(),
-            review.getRating(),
-            review.getDescription(),
-            ItemDTO.fromEntity(review.getItem()),
-            review.getUser().getUsername(),
-            profilePicUrl,
-            review.getCreatedAt(),
-            review.getUpdatedAt(),
-            likeCount,
-            likedByCurrentUser);
-        }
+                review.getId(),
+                review.getRating(),
+                review.getDescription(),
+                ItemDTO.fromEntity(review.getItem()),
+                review.getUser().getUsername(),
+                profilePicUrl,
+                review.getCreatedAt(),
+                review.getUpdatedAt(),
+                likeCount,
+                likedByCurrentUser,
+                likedBy
+        );
+    }
 }
